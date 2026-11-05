@@ -3,226 +3,348 @@ package com.osintx.app
 import android.app.Activity
 import android.os.Bundle
 import android.graphics.Color
-import android.graphics.Typeface
-import android.graphics.drawable.GradientDrawable
-import android.content.Intent
-import android.net.Uri
-import android.view.Gravity
 import android.view.View
 import android.widget.*
-import android.text.InputType
+import android.content.Intent
+import android.net.Uri
+import org.json.JSONObject
+import java.net.URL
+import java.net.HttpURLConnection
 import java.net.URLEncoder
 
 class MainActivity : Activity() {
 
-    private val bg = Color.rgb(8, 15, 30)
-    private val panel = Color.rgb(17, 29, 49)
-    private val cyan = Color.rgb(0, 220, 220)
-    private val white = Color.WHITE
-    private lateinit var searchInput: EditText
+    private lateinit var input: EditText
+    private lateinit var output: TextView
+    private lateinit var spinner: Spinner
+    private lateinit var history: TextView
+
+    private val tools = arrayOf(
+        "Domain DNS",
+        "IP Intelligence",
+        "WHOIS / RDAP",
+        "Email Security Check",
+        "Username Search"
+    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        createDashboard()
-    }
 
-    private fun createDashboard() {
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(24, 28, 24, 24)
+            setBackgroundColor(Color.rgb(10, 17, 32))
+        }
+
+        val title = TextView(this).apply {
+            text = "OSINT X"
+            textSize = 30f
+            setTextColor(Color.rgb(0, 220, 220))
+        }
+        root.addView(title)
+
+        val subtitle = TextView(this).apply {
+            text = "PUBLIC INFORMATION INTELLIGENCE"
+            textSize = 11f
+            setTextColor(Color.LTGRAY)
+        }
+        root.addView(subtitle)
+
+        spinner = Spinner(this)
+        spinner.adapter = ArrayAdapter(
+            this,
+            android.R.layout.simple_spinner_dropdown_item,
+            tools
+        )
+        root.addView(spinner)
+
+        input = EditText(this).apply {
+            hint = "Masukkan domain, IP, email, atau username"
+            setHintTextColor(Color.GRAY)
+            setTextColor(Color.WHITE)
+            setSingleLine(true)
+        }
+        root.addView(input)
+
+        val searchButton = Button(this).apply {
+            text = "MULAI ANALISIS"
+            setOnClickListener { runAnalysis() }
+        }
+        root.addView(searchButton)
+
+        val historyButton = Button(this).apply {
+            text = "TAMPILKAN RIWAYAT"
+            setOnClickListener { showHistory() }
+        }
+        root.addView(historyButton)
+
+        output = TextView(this).apply {
+            text = "Hasil analisis akan muncul di sini."
+            textSize = 14f
+            setTextColor(Color.WHITE)
+            setPadding(0, 20, 0, 20)
+        }
+
+        history = TextView(this).apply {
+            textSize = 12f
+            setTextColor(Color.LTGRAY)
+        }
+
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(output)
+            addView(history)
+        }
+
         val scroll = ScrollView(this)
-        scroll.setBackgroundColor(bg)
+        scroll.addView(content)
+        root.addView(
+            scroll,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                0,
+                1f
+            )
+        )
 
-        val layout = LinearLayout(this)
-        layout.orientation = LinearLayout.VERTICAL
-        layout.setPadding(22, 30, 22, 30)
-
-        scroll.addView(layout)
-
-        val logo = text("OSINT X", 32, cyan, true)
-        layout.addView(logo)
-
-        layout.addView(text(
-            "MOBILE INTELLIGENCE TOOLKIT",
-            11, Color.LTGRAY, true
-        ))
-
-        addSpace(layout, 28)
-
-        layout.addView(text("Dashboard", 23, white, true))
-        layout.addView(text(
-            "Public information intelligence tools",
-            13, Color.LTGRAY, false
-        ))
-
-        addSpace(layout, 22)
-
-        val status = card()
-        status.addView(text("SYSTEM STATUS", 11, cyan, true))
-        status.addView(text(
-            "●  OSINT X READY",
-            18, white, true
-        ))
-        layout.addView(status)
-
-        addSpace(layout, 25)
-
-        layout.addView(text("Investigation Tools", 20, white, true))
-        addSpace(layout, 12)
-
-        addTool(layout, "🌐  DOMAIN LOOKUP",
-            "Contoh: example.com")
-
-        addTool(layout, "📡  IP LOOKUP",
-            "Contoh: 8.8.8.8")
-
-        addTool(layout, "👤  USERNAME SEARCH",
-            "Masukkan username publik")
-
-        addTool(layout, "✉️  EMAIL DOMAIN CHECK",
-            "Masukkan alamat email")
-
-        addSpace(layout, 20)
-
-        layout.addView(text("Search Target", 18, white, true))
-        addSpace(layout, 10)
-
-        searchInput = EditText(this)
-        searchInput.setSingleLine(true)
-        searchInput.hint = "Masukkan target..."
-        searchInput.setHintTextColor(Color.GRAY)
-        searchInput.setTextColor(white)
-        searchInput.setPadding(18, 14, 18, 14)
-        searchInput.background = rounded(panel, 12)
-        layout.addView(searchInput)
-
-        addSpace(layout, 12)
-
-        val searchButton = Button(this)
-        searchButton.text = "SEARCH PUBLIC INFORMATION"
-        searchButton.setTextColor(bg)
-        searchButton.background = rounded(cyan, 12)
-        layout.addView(searchButton)
-
-        searchButton.setOnClickListener {
-            performSearch()
-        }
-
-        addSpace(layout, 25)
-
-        val notice = card()
-        notice.addView(text("ETHICAL USE", 13, cyan, true))
-        notice.addView(text(
-            "Gunakan hanya informasi yang tersedia secara publik " +
-            "atau yang kamu miliki izin untuk periksa. " +
-            "Jangan gunakan untuk mengakses akun pribadi atau " +
-            "mengambil data tanpa izin.",
-            13, Color.LTGRAY, false
-        ))
-        layout.addView(notice)
-
-        addSpace(layout, 25)
-
-        layout.addView(text(
-            "OSINT X  •  VERSION 1.0",
-            11, Color.GRAY, true
-        ))
-
-        setContentView(scroll)
+        setContentView(root)
     }
 
-    private fun addTool(
-        parent: LinearLayout,
-        title: String,
-        hint: String
-    ) {
-        val box = card()
-        val button = TextView(this)
+    private fun runAnalysis() {
+        val query = input.text.toString().trim()
 
-        button.text = title
-        button.textSize = 15f
-        button.setTextColor(white)
-        button.setTypeface(null, Typeface.BOLD)
-        button.setPadding(5, 8, 5, 8)
-        button.isClickable = true
-        button.isFocusable = true
-
-        button.setOnClickListener {
-            searchInput.hint = hint
-            searchInput.requestFocus()
-        }
-
-        box.addView(button)
-        parent.addView(box)
-        addSpace(parent, 9)
-    }
-
-    private fun performSearch() {
-        val target = searchInput.text.toString().trim()
-
-        if (target.isEmpty()) {
-            Toast.makeText(
-                this,
-                "Masukkan target terlebih dahulu",
-                Toast.LENGTH_SHORT
-            ).show()
+        if (query.isEmpty()) {
+            input.error = "Masukkan data terlebih dahulu"
             return
         }
 
-        val query = when {
-            target.contains("@") -> {
-                val domain = target.substringAfter("@")
-                "public information about domain $domain"
+        saveHistory(query)
+        output.text = "Sedang melakukan analisis..."
+
+        Thread {
+            val result = try {
+                when (spinner.selectedItemPosition) {
+                    0 -> domainLookup(query)
+                    1 -> ipLookup(query)
+                    2 -> rdapLookup(query)
+                    3 -> emailCheck(query)
+                    4 -> {
+                        openUsernameSearch(query)
+                        "Pencarian username publik dibuka di browser."
+                    }
+                    else -> "Fitur tidak tersedia."
+                }
+            } catch (e: Exception) {
+                "Analisis gagal: ${e.message}"
             }
-            else -> "$target public information"
+
+            runOnUiThread {
+                output.text = result
+            }
+        }.start()
+    }
+
+    private fun request(url: String): JSONObject {
+        val connection = URL(url).openConnection() as HttpURLConnection
+        connection.requestMethod = "GET"
+        connection.connectTimeout = 12000
+        connection.readTimeout = 12000
+        connection.setRequestProperty("User-Agent", "OSINT-X-Android")
+
+        try {
+            val stream = if (connection.responseCode in 200..299) {
+                connection.inputStream
+            } else {
+                connection.errorStream
+            }
+
+            val body = stream.bufferedReader().use { it.readText() }
+
+            if (connection.responseCode !in 200..299) {
+                throw Exception("Server merespons HTTP ${connection.responseCode}")
+            }
+
+            return JSONObject(body)
+        } finally {
+            connection.disconnect()
         }
+    }
 
-        val encoded = URLEncoder.encode(query, "UTF-8")
-        val url = "https://www.google.com/search?q=$encoded"
-
-        startActivity(
-            Intent(Intent.ACTION_VIEW, Uri.parse(url))
+    private fun dns(domain: String, type: String): String {
+        val encoded = URLEncoder.encode(domain, "UTF-8")
+        val json = request(
+            "https://dns.google/resolve?name=$encoded&type=$type"
         )
-    }
 
-    private fun card(): LinearLayout {
-        val box = LinearLayout(this)
-        box.orientation = LinearLayout.VERTICAL
-        box.setPadding(18, 17, 18, 17)
-        box.background = rounded(panel, 14)
-        return box
-    }
+        val answers = json.optJSONArray("Answer")
+            ?: return "Tidak ditemukan"
 
-    private fun text(
-        value: String,
-        size: Int,
-        color: Int,
-        bold: Boolean
-    ): TextView {
-        val view = TextView(this)
-        view.text = value
-        view.textSize = size.toFloat()
-        view.setTextColor(color)
+        val values = mutableListOf<String>()
 
-        if (bold) {
-            view.setTypeface(null, Typeface.BOLD)
+        for (i in 0 until answers.length()) {
+            val item = answers.getJSONObject(i)
+            values.add(item.optString("data"))
         }
 
-        return view
+        return if (values.isEmpty()) "Tidak ditemukan"
+        else values.joinToString("\n")
     }
 
-    private fun rounded(color: Int, radius: Int): GradientDrawable {
-        return GradientDrawable().apply {
-            setColor(color)
-            cornerRadius = radius.toFloat()
+    private fun domainLookup(domain: String): String {
+        return """
+            DOMAIN DNS ANALYSIS
+            ==================
+
+            Domain: $domain
+
+            A RECORD:
+            ${dns(domain, "A")}
+
+            AAAA RECORD:
+            ${dns(domain, "AAAA")}
+
+            MX RECORD:
+            ${dns(domain, "MX")}
+
+            NS RECORD:
+            ${dns(domain, "NS")}
+
+            TXT RECORD:
+            ${dns(domain, "TXT")}
+        """.trimIndent()
+    }
+
+    private fun ipLookup(ip: String): String {
+        val json = request("https://ipapi.co/$ip/json/")
+
+        if (json.has("error") && json.optBoolean("error")) {
+            return "IP tidak dapat diperiksa: ${json.optString("reason")}"
         }
+
+        return """
+            IP INTELLIGENCE
+            ===============
+
+            IP: ${json.optString("ip")}
+            Negara: ${json.optString("country_name")}
+            Wilayah: ${json.optString("region")}
+            Kota: ${json.optString("city")}
+            Kode Pos: ${json.optString("postal")}
+            Koordinat: ${json.optString("latitude")}, ${json.optString("longitude")}
+            ISP / Organisasi: ${json.optString("org")}
+            ASN: ${json.optString("asn")}
+            Zona Waktu: ${json.optString("timezone")}
+
+            Catatan: lokasi IP hanya perkiraan,
+            bukan lokasi perangkat secara langsung.
+        """.trimIndent()
     }
 
-    private fun addSpace(parent: LinearLayout, height: Int) {
-        val space = View(this)
-        parent.addView(
-            space,
-            LinearLayout.LayoutParams(
-                1,
-                (height * resources.displayMetrics.density).toInt()
-            )
+    private fun rdapLookup(domain: String): String {
+        val json = request("https://rdap.org/domain/$domain")
+
+        val nameservers = json.optJSONArray("nameservers")
+        val nsList = mutableListOf<String>()
+
+        if (nameservers != null) {
+            for (i in 0 until nameservers.length()) {
+                nsList.add(
+                    nameservers.getJSONObject(i)
+                        .optString("ldhName")
+                )
+            }
+        }
+
+        return """
+            DOMAIN RDAP INFORMATION
+            ======================
+
+            Domain: ${json.optString("ldhName")}
+            Handle: ${json.optString("handle")}
+            Status: ${json.optJSONArray("status")?.toString() ?: "Tidak tersedia"}
+
+            Nameservers:
+            ${if (nsList.isEmpty()) "Tidak tersedia" else nsList.joinToString("\n")}
+
+            Sumber: RDAP publik
+            Catatan: sebagian data pemilik domain
+            mungkin disembunyikan oleh registrar.
+        """.trimIndent()
+    }
+
+    private fun emailCheck(email: String): String {
+        if (!android.util.Patterns.EMAIL_ADDRESS
+                .matcher(email).matches()) {
+            return "Format email tidak valid."
+        }
+
+        val domain = email.substringAfter("@")
+
+        val mx = dns(domain, "MX")
+        val txt = dns(domain, "TXT")
+        val dmarc = dns("_dmarc.$domain", "TXT")
+
+        val spfFound = txt.contains("v=spf1", true)
+        val dmarcFound = dmarc.contains("v=DMARC1", true)
+
+        return """
+            EMAIL DOMAIN SECURITY
+            =====================
+
+            Email: $email
+            Domain: $domain
+
+            MX RECORD:
+            $mx
+
+            SPF:
+            ${if (spfFound) "Ditemukan" else "Tidak ditemukan"}
+
+            DMARC:
+            ${if (dmarcFound) "Ditemukan" else "Tidak ditemukan"}
+
+            TXT RECORD:
+            $txt
+
+            Catatan: pemeriksaan ini hanya memeriksa
+            konfigurasi domain, bukan memastikan
+            kotak email benar-benar aktif.
+        """.trimIndent()
+    }
+
+    private fun openUsernameSearch(username: String) {
+        val query = URLEncoder.encode(
+            "\"$username\" profile",
+            "UTF-8"
         )
+
+        val intent = Intent(
+            Intent.ACTION_VIEW,
+            Uri.parse("https://www.google.com/search?q=$query")
+        )
+
+        startActivity(intent)
+    }
+
+    private fun saveHistory(query: String) {
+        val prefs = getSharedPreferences("osint_history", MODE_PRIVATE)
+        val old = prefs.getString("items", "") ?: ""
+        val updated = (listOf(query) + old.split("\n")
+            .filter { it.isNotBlank() && it != query })
+            .take(30)
+            .joinToString("\n")
+
+        prefs.edit().putString("items", updated).apply()
+    }
+
+    private fun showHistory() {
+        val prefs = getSharedPreferences("osint_history", MODE_PRIVATE)
+        val items = prefs.getString("items", "") ?: ""
+
+        history.text = if (items.isBlank()) {
+            "Belum ada riwayat pencarian."
+        } else {
+            "RIWAYAT PENCARIAN\n\n$items"
+        }
     }
 }
